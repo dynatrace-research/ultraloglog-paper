@@ -1,0 +1,216 @@
+// Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+//
+// This software and associated documentation files (the "Software")
+// are being made available by Dynatrace LLC for purposes of
+// illustrating the implementation of certain algorithms which have
+// been published by Dynatrace LLC. Permission is hereby granted,
+// free of charge, to any person obtaining a copy of the Software,
+// to view and use the Software for internal, non-productive,
+// non-commercial purposes only – the Software may not be used to
+// process live data or distributed, sublicensed, modified and/or
+// sold either alone or as part of or in combination with any other
+// software.
+//
+// The above copyright notice and this permission notice shall be
+// included in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+// OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+}
+
+plugins {
+	id 'com.diffplug.spotless' version '6.21.0'
+}
+
+def figFiles = []
+
+def mvpFigFiles = [
+	"paper/gra_efficiency.pdf",
+	"paper/efficiency_comparison.pdf",
+	"paper/mvp_martingale.pdf",
+	"paper/mvp_lower_bound.pdf",
+	"paper/mvp_compressed.pdf",
+	"paper/mvp_compressed_martingale.pdf"
+]
+
+task makeMvpCharts (type: Exec) {
+	doFirst {
+		standardOutput = new FileOutputStream("results/mvp.txt")
+	}
+	inputs.files "python/preamble.py", "python/plot_mvp_charts.py", "python/mvp.py", "paper/symbols.tex"
+	outputs.files mvpFigFiles, "results/mvp.txt"
+	commandLine 'python', "python/plot_mvp_charts.py"
+}
+figFiles +=mvpFigFiles
+
+
+def compressionInputFiles = [
+	"results/compression/compression8.csv",
+	"results/compression/compression12.csv",
+	"results/compression/compression16.csv"
+]
+def compressionFigFiles = ["paper/compression.pdf"]
+task makeCompressionCharts (type: Exec) {
+	inputs.files compressionInputFiles, "python/preamble.py", "python/mvp.py", "python/compression.py", "paper/symbols.tex"
+	outputs.files compressionFigFiles
+	commandLine 'python', "python/compression.py"
+}
+figFiles +=compressionFigFiles
+
+
+def errorInputFiles = [
+	"hash4j/test-results/ultraloglog-estimation-error-p08.csv",
+	"hash4j/test-results/ultraloglog-estimation-error-p12.csv",
+	"hash4j/test-results/ultraloglog-estimation-error-p16.csv"
+]
+def errorFigFiles = [
+	"paper/estimation_error.pdf"
+]
+task makeErrorCharts (type: Exec) {
+	inputs.files errorInputFiles, "python/preamble.py", "python/mvp.py", "python/estimation_error_evaluation.py", "paper/symbols.tex"
+	outputs.files errorFigFiles
+	commandLine 'python', "python/estimation_error_evaluation.py"
+}
+figFiles +=errorFigFiles
+
+def performanceFigFiles = [
+	"paper/add_performance.pdf",
+	"paper/estimation_performance.pdf"
+]
+task makePerformanceCharts (type: Exec) {
+	inputs.files "results/benchmark-results.json", "python/benchmark.py", "python/preamble.py", "paper/symbols.tex"
+	outputs.files performanceFigFiles
+	commandLine 'python', "python/benchmark.py"
+}
+figFiles +=performanceFigFiles
+
+
+def relativeApproximationErrorFigFiles = [
+	"paper/relative_approximation_error.pdf"
+]
+
+task makeRelativeApproximationErrorCharts (type: Exec) {
+	inputs.files "python/preamble.py", "python/mvp.py", "python/relative_approximation_error_charts.py", "paper/symbols.tex"
+	outputs.files relativeApproximationErrorFigFiles
+	commandLine 'python', "python/relative_approximation_error_charts.py"
+}
+figFiles += relativeApproximationErrorFigFiles
+
+
+task pdfFigures {
+	group 'Main'
+	dependsOn makeMvpCharts, makeRelativeApproximationErrorCharts, makeCompressionCharts,makeErrorCharts, makePerformanceCharts
+}
+
+static def readPythonLicense(licenseName) {
+	File licenseFile = new File('licenses/' + licenseName + '.txt')
+	def line
+	def s = '#\n'
+	licenseFile.withReader { reader ->
+		while ((line = reader.readLine()) != null) {
+			s += '#'
+			if(!line.isEmpty()) {
+				s += ' '
+				s += line
+			}
+			s += '\n'
+		}
+	}
+	s += '#'
+	return s
+}
+
+static def readJavaLicense(licenseName) {
+	File licenseFile = new File('licenses/' + licenseName + '.txt')
+	def line
+	def s = '//\n'
+	licenseFile.withReader { reader ->
+		while ((line = reader.readLine()) != null) {
+			s += '//'
+			if(!line.isEmpty()) {
+				s += ' '
+				s += line
+			}
+			s += '\n'
+		}
+	}
+	s += '//'
+	return s
+}
+
+spotless {
+	ratchetFrom 'origin/main'
+	apply plugin: 'groovy'
+	groovyGradle {
+		target '*.gradle','java/*.gradle'
+		greclipse('4.27')
+	}
+	python {
+		target 'python/**/*.py'
+		black('23.3.0')
+		licenseHeader readPythonLicense('license'), '(import|from)'
+	}
+	java {
+		target 'java/**/*.java'
+		importOrder()
+		removeUnusedImports()
+		googleJavaFormat('1.17.0')
+		licenseHeader readJavaLicense('license')
+	}
+}
+
+
+repositories {
+	mavenCentral()
+}
+
+
+task buildEmpiricalMVPComputationCpp (type: Exec) {
+	workingDir 'c++'
+	outputs.files "c++/empiricalMvpComputation"
+	commandLine "g++", "-std=c++20", "-Wall", "-O3", "empiricalMvpComputation.cpp", "-o", "empiricalMvpComputation"
+	standardOutput = new ByteArrayOutputStream()
+	outputs.upToDateWhen { false }
+}
+
+task runEmpiricalMVPComputationCpp (type: Exec) {
+	group 'main'
+	inputs.files "c++/empiricalMvpComputation"
+	outputs.files \
+			'results/comparison-empirical-mvp/HyperLogLogLog.csv'
+	standardOutput = new ByteArrayOutputStream()
+	commandLine "c++/empiricalMvpComputation"
+	dependsOn buildEmpiricalMVPComputationCpp
+}
+
+task runEmpiricalMVPComputationJava {
+	group 'main'
+	dependsOn ':java:runEmpiricalMVPComputation'
+}
+
+task runEmpiricalMVPComputation {
+	group 'main'
+	dependsOn runEmpiricalMVPComputationCpp, runEmpiricalMVPComputationJava
+}
+
+task runCompressionSimulation {
+	group 'main'
+	dependsOn ':java:runCompressionSimulation'
+}
+
+task runBenchmarks {
+	group 'main'
+	dependsOn ':java:jmh'
+}
+

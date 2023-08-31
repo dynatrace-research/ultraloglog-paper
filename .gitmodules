@@ -1,0 +1,3 @@
+[submodule "hash4j"]
+	path = hash4j
+	url = https://github.com/dynatrace-oss/hash4j.git

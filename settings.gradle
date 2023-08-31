@@ -1,0 +1,2 @@
+rootProject.name = 'ultraloglog-paper'
+include 'java'
