@@ -10,8 +10,9 @@ Since its invention HyperLogLog has become the standard algorithm for approximat
 
 2. Install required packages:
    ```
-   sudo apt update && sudo apt install python-is-python3 [TODO determine required packages]
-   pip install matplotlib-label-lines
+   sudo apt update
+   sudo apt install default-jdk python-is-python3 python3-pip texlive texlive-latex-extra texlive-fonts-extra texlive-science cm-super
+   pip install matplotlib matplotlib-label-lines scipy
    ```
 3. Clone repository including submodules:
    ```
