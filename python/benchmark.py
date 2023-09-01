@@ -29,6 +29,8 @@ import json
 import matplotlib.pyplot as plt
 from labellines import labelLine
 
+colors = ["C" + str(i + 1) for i in range(0, 21)]
+
 
 def plot_add_performance_chart(data):
     relevant_data = filter(
@@ -78,7 +80,7 @@ def plot_estimation_chart(ax, data, sketch, estimator, title):
         xvals = sorted(dd)
         yvals = [dd[x] for x in xvals]
 
-        ax.plot(xvals, yvals, label="$" + str(p) + "$")
+        ax.plot(xvals, yvals, label="$" + str(p) + "$", color=colors[p])
     for l in ax.get_lines():
         labelLine(l, 2.5, bbox=bbox, outline_width=outline_width, align=False)
 
@@ -164,7 +166,7 @@ def plot_add_chart(ax, data, sketch, title):
         xvals = sorted(dd)
         yvals = [dd[x] for x in xvals]
 
-        ax.plot(xvals, yvals, label="$" + str(p) + "$")
+        ax.plot(xvals, yvals, label="$" + str(p) + "$", color=colors[p])
     for i, l in enumerate(ax.get_lines()):
         labelLine(l, 2.0, bbox=bbox, outline_width=outline_width, align=False)
 

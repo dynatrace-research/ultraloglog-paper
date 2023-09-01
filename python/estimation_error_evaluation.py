@@ -122,6 +122,7 @@ for pidx in range(len(pvals)):
         [-theory * 2, theory * 2],
         color="red",
         linestyle="dashed",
+        linewidth=0.8,
     )
 
     rel_error_martingale_theory = sqrt(

@@ -51,35 +51,9 @@ def print_result(r, coefficients_calculator=None):
     print(s)
 
 
-colors = [
-    "C0",
-    "C1",
-    "C2",
-    "C3",
-    "C4",
-    "C5",
-    "C6",
-    "C7",
-    "C8",
-    "C9",
-    "C10",
-    "C11",
-    "C12",
-    "C13",
-    "C14",
-    "C15",
-    "C16",
-    "C17",
-    "C18",
-    "C19",
-    "C20",
-    "C21",
-    "C22",
-    "C23",
-    "C24",
-    "C25",
-]
-linestyles = ["solid"] * 25
+colors = ["C" + str(i) for i in range(0, 65)]
+linestyles = ["solid"] * 66
+
 bbox = None
 outline_width = 6
 
@@ -123,7 +97,8 @@ def make_chart_for_b_fixed(b, q):
         ehll = mvp.mvp_gra_eval(6, d=1, b=2, t=1)
         ehll_opt = mvp.mvp_gra_eval(6, d=1, b=2)
         ull = mvp.mvp_gra_eval(6, d=2, b=2)
-        offset = 0.1
+        offset_x = 0
+        offset_y = 0.1
 
         ax.plot(
             [hll.t],
@@ -134,7 +109,7 @@ def make_chart_for_b_fixed(b, q):
         )
         ax.text(
             hll.t + 0.01,
-            hll.mvp + offset,
+            hll.mvp + offset_y,
             "HLL*",
             horizontalalignment="center",
         )
@@ -148,7 +123,7 @@ def make_chart_for_b_fixed(b, q):
         )
         ax.text(
             hll_opt.t - 0.01,
-            hll_opt.mvp + offset,
+            hll_opt.mvp + offset_y,
             r"HLL",
             horizontalalignment="center",
         )
@@ -162,7 +137,7 @@ def make_chart_for_b_fixed(b, q):
         )
         ax.text(
             ehll.t + 0.02,
-            ehll.mvp + offset,
+            ehll.mvp + offset_y,
             "EHLL*",
             horizontalalignment="center",
         )
@@ -176,7 +151,7 @@ def make_chart_for_b_fixed(b, q):
         )
         ax.text(
             ehll_opt.t - 0.02,
-            ehll_opt.mvp + offset,
+            ehll_opt.mvp + offset_y,
             r"EHLL",
             horizontalalignment="center",
         )
@@ -188,7 +163,7 @@ def make_chart_for_b_fixed(b, q):
             marker=marker,
             markersize=marker_size,
         )
-        ax.text(ull.t, ull.mvp + offset, "ULL", horizontalalignment="center")
+        ax.text(ull.t, ull.mvp + offset_y, "ULL", horizontalalignment="center")
 
         ax.text(
             0.975,
@@ -243,7 +218,7 @@ def make_chart_for_optimal_tau():
             hll_opt = mvp.mvp_gra_eval(6, d=0, b=2)
             ehll_opt = mvp.mvp_gra_eval(6, d=1, b=2)
             ull = mvp.mvp_gra_eval(6, d=2, b=2)
-            offset = 0.1
+            offset_y = 0.1
 
             ax.plot(
                 [2],
@@ -252,7 +227,7 @@ def make_chart_for_optimal_tau():
                 marker=marker,
                 markersize=marker_size,
             )
-            ax.text(2, hll_opt.mvp + offset, r"HLL", horizontalalignment="center")
+            ax.text(2, hll_opt.mvp + offset_y, r"HLL", horizontalalignment="center")
 
             ax.plot(
                 [2],
@@ -263,7 +238,7 @@ def make_chart_for_optimal_tau():
             )
             ax.text(
                 2,
-                ehll_opt.mvp + offset,
+                ehll_opt.mvp + offset_y,
                 r"EHLL",
                 horizontalalignment="center",
             )
@@ -275,7 +250,7 @@ def make_chart_for_optimal_tau():
                 marker=marker,
                 markersize=marker_size,
             )
-            ax.text(2, ull.mvp + offset, "ULL", horizontalalignment="center")
+            ax.text(2, ull.mvp + offset_y, "ULL", horizontalalignment="center")
 
             labelLine(ax.get_lines()[0], 1.5, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[1], 1.5, bbox=bbox, outline_width=outline_width)
@@ -345,9 +320,9 @@ def make_efficiency_chart_for_gra():
                 mvp.mvp_lower_bound_eval(q, d, b).mvp / mvp.mvp_gra_eval(q, d, b).mvp
                 for b in b_values
             ],
-            label="$\symNumExtraBits=" + str(d) + "$"
-            # color=colors[d], TODO colors
-            # linestyle=linestyles[d],
+            label="$\symNumExtraBits=" + str(d) + "$",
+            color=colors[d],
+            linestyle=linestyles[d],
         )
 
     ax.set_ylim([0.7, 1.02])
@@ -359,7 +334,7 @@ def make_efficiency_chart_for_gra():
     hll_opt = mvp.mvp_gra_eval(6, d=0, b=2)
     ehll_opt = mvp.mvp_gra_eval(6, d=1, b=2)
     ull = mvp.mvp_gra_eval(6, d=2, b=2)
-    offset = 0.1
+    offset_y = 0.1
 
     ax.plot(
         [2],
@@ -368,7 +343,7 @@ def make_efficiency_chart_for_gra():
         marker=marker,
         markersize=marker_size,
     )
-    ax.text(2, hll_opt.mvp + offset, r"HLL", horizontalalignment="center")
+    ax.text(2, hll_opt.mvp + offset_y, r"HLL", horizontalalignment="center")
 
     ax.plot(
         [2],
@@ -379,7 +354,7 @@ def make_efficiency_chart_for_gra():
     )
     ax.text(
         2,
-        ehll_opt.mvp + offset,
+        ehll_opt.mvp + offset_y,
         r"EHLL",
         horizontalalignment="center",
     )
@@ -391,7 +366,7 @@ def make_efficiency_chart_for_gra():
         marker=marker,
         markersize=marker_size,
     )
-    ax.text(2, ull.mvp + offset, "ULL", horizontalalignment="center")
+    ax.text(2, ull.mvp + offset_y, "ULL", horizontalalignment="center")
 
     labelLine(ax.get_lines()[0], 1.2, bbox=bbox, outline_width=outline_width)
     labelLine(ax.get_lines()[1], 1.5, bbox=bbox, outline_width=outline_width)
@@ -480,7 +455,7 @@ def make_efficiency_gra_vs_new():
 
 def make_chart_for_lower_bound():
     q_values = [6, 7]
-    d_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    d_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 18, 23, 30]
     b_values = numpy.linspace(1, 4, 1000)
 
     fig, axs = plt.subplots(2, 1, sharex=True, sharey=True)
@@ -508,44 +483,53 @@ def make_chart_for_lower_bound():
             hll = mvp.mvp_lower_bound_eval(6, d=0, b=2).mvp
             ehll = mvp.mvp_lower_bound_eval(6, d=1, b=2).mvp
             ull = mvp.mvp_lower_bound_eval(6, d=2, b=2).mvp
-            offset = 0.1
+            offset_x = 0.05
+            offset_y = 0.1
 
             ax.plot([2], [hll], color=colors[0], marker=marker, markersize=marker_size)
-            ax.text(2, hll + offset, r"HLL", horizontalalignment="center")
+            ax.text(2 + offset_x, hll + offset_y, r"HLL", horizontalalignment="center")
 
             ax.plot([2], [ehll], color=colors[1], marker=marker, markersize=marker_size)
-            ax.text(2, ehll + offset, r"EHLL", horizontalalignment="center")
+            ax.text(
+                2 + offset_x, ehll + offset_y, r"EHLL", horizontalalignment="center"
+            )
 
             ax.plot([2], [ull], color=colors[2], marker=marker, markersize=marker_size)
-            ax.text(2, ull + offset, "ULL", horizontalalignment="center")
+            ax.text(2 + offset_x, ull + offset_y, "ULL", horizontalalignment="center")
 
-            labelLine(ax.get_lines()[0], 1.5, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[1], 1.5, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[0], 1.295, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[1], 1.29, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[2], 2.9, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[3], 2.85, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[4], 2.75, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[5], 2.65, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[6], 2.54, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[7], 2.43, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[8], 2.32, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[9], 2.22, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[10], 2.13, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[11], 2.05, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[12], 1.97, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[8], 2.325, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[9], 2.235, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[10], 2.15, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[11], 2.0, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[12], 1.86, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[13], 1.68, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[14], 1.535, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[15], 1.41, bbox=bbox, outline_width=outline_width)
         elif q == 7:
-            labelLine(ax.get_lines()[0], 1.5, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[1], 1.5, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[0], 1.257, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[1], 1.27, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[2], 2.8, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[3], 2.75, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[4], 2.64, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[5], 2.53, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[6], 2.42, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[7], 2.31, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[8], 2.21, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[9], 2.13, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[10], 2.05, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[11], 1.97, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[12], 1.90, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[7], 2.315, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[8], 2.225, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[9], 2.145, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[10], 2.065, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[11], 1.92, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[12], 1.81, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[13], 1.645, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[14], 1.51, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[15], 1.395, bbox=bbox, outline_width=outline_width)
         else:
             labelLines(ax.get_lines(), bbox=bbox, outline_width=outline_width)
 
@@ -597,16 +581,16 @@ def make_chart_for_compressed():
     hll = mvp.mvp_compressed_eval(d=0, b=2).mvp
     ehll = mvp.mvp_compressed_eval(d=1, b=2).mvp
     ull = mvp.mvp_compressed_eval(d=2, b=2).mvp
-    offset = 0.1
+    offset_y = 0.1
 
     ax.plot([2], [hll], color=colors[0], marker=marker, markersize=marker_size)
-    ax.text(2, hll + offset, r"HLL", horizontalalignment="center")
+    ax.text(2, hll + offset_y, r"HLL", horizontalalignment="center")
 
     ax.plot([2], [ehll], color=colors[1], marker=marker, markersize=marker_size)
-    ax.text(2, ehll + offset, r"EHLL", horizontalalignment="center")
+    ax.text(2, ehll + offset_y, r"EHLL", horizontalalignment="center")
 
     ax.plot([2], [ull], color=colors[2], marker=marker, markersize=marker_size)
-    ax.text(2, ull + offset, "ULL", horizontalalignment="center")
+    ax.text(2, ull + offset_y, "ULL", horizontalalignment="center")
 
     labelLine(ax.get_lines()[0], 1.66, bbox=bbox, outline_width=outline_width)
     labelLine(ax.get_lines()[1], 1.58, bbox=bbox, outline_width=outline_width)
@@ -691,7 +675,7 @@ def make_chart_for_compressed_martingale():
 
 def make_chart_for_martingale():
     q_values = [6]
-    d_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    d_values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 18, 23, 30]
     b_values = numpy.linspace(1, 4, 1000)
 
     fig, ax = plt.subplots(1, 1, sharex=True, sharey=True)
@@ -715,7 +699,8 @@ def make_chart_for_martingale():
         ax.grid()
 
         if q == 6:
-            offset = 0.1
+            offset_x = 0.05
+            offset_y = 0.1
 
             hll_mvp = mvp.mvp_martingale_eval(q, d=0, b=2)
             ehll_mvp = mvp.mvp_martingale_eval(q, d=1, b=2)
@@ -729,8 +714,8 @@ def make_chart_for_martingale():
                 markersize=marker_size,
             )
             ax.text(
-                hll_mvp.b,
-                hll_mvp.mvp + offset,
+                hll_mvp.b + offset_x,
+                hll_mvp.mvp + offset_y,
                 r"HLL",
                 horizontalalignment="center",
             )
@@ -743,8 +728,8 @@ def make_chart_for_martingale():
                 markersize=marker_size,
             )
             ax.text(
-                ehll_mvp.b,
-                ehll_mvp.mvp + offset,
+                ehll_mvp.b + offset_x,
+                ehll_mvp.mvp + offset_y,
                 r"EHLL",
                 horizontalalignment="center",
             )
@@ -757,29 +742,32 @@ def make_chart_for_martingale():
                 markersize=marker_size,
             )
             ax.text(
-                ull_mvp.b,
-                ull_mvp.mvp - offset,
+                ull_mvp.b + offset_x,
+                ull_mvp.mvp - offset_y,
                 "ULL",
                 horizontalalignment="center",
                 verticalalignment="top",
             )
 
-            labelLine(ax.get_lines()[0], 1.41, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[1], 1.35, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[0], 1.85, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[1], 1.85, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[2], 2.9, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[3], 2.85, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[4], 2.75, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[5], 2.635, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[6], 2.505, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[7], 2.365, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[8], 2.23, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[8], 2.235, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[9], 2.13, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[10], 2.025, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[11], 1.95, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[12], 1.88, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[10], 2.029, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[11], 1.885, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[12], 1.755, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[13], 1.6, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[14], 1.475, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[15], 1.365, bbox=bbox, outline_width=outline_width)
         elif q == 7:
-            labelLine(ax.get_lines()[0], 1.35, bbox=bbox, outline_width=outline_width)
-            labelLine(ax.get_lines()[1], 1.35, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[0], 2.15, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[1], 2.15, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[2], 2.8, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[3], 2.75, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[4], 2.64, bbox=bbox, outline_width=outline_width)
@@ -791,6 +779,9 @@ def make_chart_for_martingale():
             labelLine(ax.get_lines()[10], 1.95, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[11], 1.88, bbox=bbox, outline_width=outline_width)
             labelLine(ax.get_lines()[12], 1.82, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[13], 1.7, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[14], 1.6, bbox=bbox, outline_width=outline_width)
+            labelLine(ax.get_lines()[15], 1.5, bbox=bbox, outline_width=outline_width)
         else:
             labelLines(ax.get_lines(), bbox=bbox, outline_width=outline_width)
 
