@@ -28,11 +28,11 @@ Since its invention HyperLogLog has become the standard algorithm for approximat
    ```
    ./gradlew simulateEstimationErrors
    ```
-7. Compute the empirical memory-variance product (MVP) based on the actual allocated memory and the serialization size as given in `results\comparison-empirical-mvp` (takes ~2h, not needed for the figures):
+7. Compute the empirical memory-variance product (MVP) based on the actual allocated memory and the serialization size as given in `results\comparison-empirical-mvp` by running the `runEmpiricalMVPComputation` task in the root directory (takes ~2h, not needed for the figures):
    ```
    ./gradlew runEmpiricalMVPComputation
    ```
-8. Generate all figures in the `paper` directory by executing (takes ~5min):
+8. Generate all figures in the `paper` directory by executing the `pdfFigures` task in the root directory (takes ~5min):
    ```
    ./gradlew pdfFigures
    ```
