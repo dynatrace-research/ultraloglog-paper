@@ -1,0 +1,12 @@
+* text=auto
+
+*.java text
+*.py text
+*.md text
+*.csv text
+
+*.bat text eol=crlf
+
+gradlew text eol=lf
+
+*.sh text eol=lf
