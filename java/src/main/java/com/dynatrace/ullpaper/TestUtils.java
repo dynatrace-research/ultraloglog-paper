@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Dynatrace LLC. All rights reserved.
+// Copyright (c) 2022-2024 Dynatrace LLC. All rights reserved.
 //
 // This software and associated documentation files (the "Software")
 // are being made available by Dynatrace LLC for purposes of
@@ -39,11 +39,12 @@ public class TestUtils {
     Preconditions.checkArgument(max >= 1.);
     List<BigInt> distinctCounts = new ArrayList<>();
     BigInt c = BigInt.ceil(max);
+    final double factor = 1. / (1. + relativeIncrement);
     while (c.isPositive()) {
       distinctCounts.add(c.copy());
       double d = c.asDouble();
       c.decrement();
-      c.min(BigInt.ceil(d / (1. + relativeIncrement)));
+      c.min(BigInt.ceil(d * factor));
     }
     Collections.reverse(distinctCounts);
     return distinctCounts;

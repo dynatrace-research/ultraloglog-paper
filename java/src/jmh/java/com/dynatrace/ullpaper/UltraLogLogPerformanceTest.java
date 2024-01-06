@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Dynatrace LLC. All rights reserved.
+// Copyright (c) 2022-2024 Dynatrace LLC. All rights reserved.
 //
 // This software and associated documentation files (the "Software")
 // are being made available by Dynatrace LLC for purposes of
@@ -26,9 +26,10 @@
 //
 package com.dynatrace.ullpaper;
 
+import com.dynatrace.hash4j.distinctcount.MartingaleEstimator;
 import com.dynatrace.hash4j.distinctcount.UltraLogLog;
+import java.util.Arrays;
 import java.util.SplittableRandom;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -66,7 +67,8 @@ public class UltraLogLogPerformanceTest {
       "10",
       "5",
       "2",
-      "1"
+      "1",
+      "0"
     })
     public int numElements;
 
@@ -89,6 +91,17 @@ public class UltraLogLogPerformanceTest {
       sketch.add(addState.random.nextLong());
     }
     blackhole.consume(sketch);
+  }
+
+  @Benchmark
+  @BenchmarkMode(Mode.AverageTime)
+  public void distinctCountAddWithMartingaleEstimator(AddState addState, Blackhole blackhole) {
+    final UltraLogLog sketch = UltraLogLog.create(addState.precision);
+    final MartingaleEstimator martingaleEstimator = new MartingaleEstimator();
+    for (long i = 0; i < addState.numElements; ++i) {
+      sketch.add(addState.random.nextLong(), martingaleEstimator);
+    }
+    blackhole.consume(martingaleEstimator.getDistinctCountEstimate());
   }
 
   public enum Estimator {
@@ -129,7 +142,8 @@ public class UltraLogLogPerformanceTest {
       "10",
       "5",
       "2",
-      "1"
+      "1",
+      "0"
     })
     public int numElements;
 
@@ -139,15 +153,25 @@ public class UltraLogLogPerformanceTest {
     @Param public Estimator estimator;
 
     @Param({"100"})
-    public int numExamples;
+    public int numMaxDifferentExamples;
+
+    @Param({"10000000"})
+    public int memorySizeForExamplesInBytes;
 
     @Setup(Level.Trial)
     public void init() {
-      SplittableRandom random = new SplittableRandom(ThreadLocalRandom.current().nextLong());
-      sketches =
-          Stream.generate(() -> generate(random, numElements, precision))
-              .limit(numExamples)
-              .toArray(i -> new UltraLogLog[i]);
+      SplittableRandom random = new SplittableRandom();
+      int numExamples =
+          memorySizeForExamplesInBytes / UltraLogLog.create(precision).getState().length;
+      sketches = new UltraLogLog[numExamples];
+      for (int i = 0; i < numExamples; ++i) {
+        if (i < numMaxDifferentExamples) {
+          sketches[i] = generate(random, numElements, precision);
+        } else {
+          byte[] data = sketches[i % numMaxDifferentExamples].getState();
+          sketches[i] = UltraLogLog.wrap(Arrays.copyOf(data, data.length));
+        }
+      }
     }
 
     @TearDown(Level.Trial)
@@ -161,7 +185,51 @@ public class UltraLogLogPerformanceTest {
   public void distinctCountEstimation(EstimationState estimationState, Blackhole blackhole) {
     UltraLogLog.Estimator estimator = estimationState.estimator.estimator;
     for (int i = 0; i < estimationState.sketches.length; ++i) {
-      blackhole.consume(estimator.estimate(estimationState.sketches[i]));
+      double estimate = estimator.estimate(estimationState.sketches[i]);
+      blackhole.consume(estimate);
+    }
+  }
+
+  @State(Scope.Benchmark)
+  public static class RegisterScanState {
+
+    UltraLogLog[] sketches = null;
+
+    @Param({"16", "15", "14", "13", "12", "11", "10", "9", "8"})
+    public int precision;
+
+    @Param public Estimator estimator;
+
+    @Param({"10000000"})
+    public int memorySizeForExamplesInBytes;
+
+    @Setup(Level.Trial)
+    public void init() {
+      int numExamples =
+          memorySizeForExamplesInBytes / UltraLogLog.create(precision).getState().length;
+      sketches =
+          Stream.generate(() -> UltraLogLog.create(precision))
+              .limit(numExamples)
+              .toArray(i -> new UltraLogLog[i]);
+    }
+
+    @TearDown(Level.Trial)
+    public void finish() {
+      sketches = null;
+    }
+  }
+
+  @Benchmark
+  @BenchmarkMode(Mode.AverageTime)
+  public void registerScan(RegisterScanState registerScanState, Blackhole blackhole) {
+    for (int i = 0; i < registerScanState.sketches.length; ++i) {
+      byte[] state = registerScanState.sketches[i].getState();
+      int sum = 0;
+      for (byte b : state) {
+        int r = b & 0xFF;
+        sum += r;
+      }
+      blackhole.consume(sum);
     }
   }
 }

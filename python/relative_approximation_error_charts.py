@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+# Copyright (c) 2023-2024 Dynatrace LLC. All rights reserved.
 #
 # This software and associated documentation files (the "Software")
 # are being made available by Dynatrace LLC for purposes of
@@ -27,11 +27,9 @@
 import preamble
 import numpy
 import math
-from math import log, expm1, exp, log1p
-from scipy.special import zeta
+from math import expm1, exp, log1p
 from scipy.optimize import minimize_scalar
 import matplotlib.pyplot as plt
-import scipy.integrate as integrate
 import mvp
 
 
@@ -98,7 +96,7 @@ def find_max_for_function_with_period_1(f):
 
 
 def calculate_fisher_information_max_relative_error(d, b):
-    approx = mvp.calculate_fisher_information(d=d, b=b)
+    approx = float(mvp.calculate_fisher_information(d=d, b=b))
     return math.sqrt(
         find_max_for_function_with_period_1(
             lambda x: pow(
@@ -140,7 +138,7 @@ def calculate_entropy_series(d, b, x):
 
 
 def calculate_entropy_max_relative_error(d, b):
-    approx = mvp.calculate_entropy(d=d, b=b)
+    approx = float(mvp.calculate_entropy(d=d, b=b))
     return math.sqrt(
         find_max_for_function_with_period_1(
             lambda x: pow(approx / calculate_entropy_series(d=d, b=b, x=x) - 1, 2)
@@ -171,7 +169,7 @@ def plot_relative_error(ax, relative_error_function, title):
     ax.plot(
         bases,
         [relative_error_function(b=b, d=2) for b in bases],
-        label="$\symNumExtraBits=2$",
+        label=r"$\symNumExtraBits=2$",
         linewidth=1,
         color="blue",
         linestyle="dashed",
@@ -179,7 +177,7 @@ def plot_relative_error(ax, relative_error_function, title):
     ax.plot(
         bases,
         [relative_error_function(b=b, d=0) for b in bases],
-        label="$\symNumExtraBits=0$",
+        label=r"$\symNumExtraBits=0$",
         linewidth=1,
         color="black",
         linestyle="dotted",
@@ -188,6 +186,11 @@ def plot_relative_error(ax, relative_error_function, title):
 
     ax.legend(
         loc="lower right",
+        columnspacing=1,
+        labelspacing=0.2,
+        borderpad=0.2,
+        handletextpad=0.4,
+        fancybox=False,
         framealpha=1,
     )
 
@@ -215,7 +218,7 @@ def print_relative_error_charts():
         "paper/relative_approximation_error.pdf",
         format="pdf",
         dpi=1200,
-        metadata={"creationDate": None},
+        metadata={"CreationDate": None, "ModDate": None},
     )
     plt.close(fig)
 
