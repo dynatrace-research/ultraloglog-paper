@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+# Copyright (c) 2023-2024 Dynatrace LLC. All rights reserved.
 #
 # This software and associated documentation files (the "Software")
 # are being made available by Dynatrace LLC for purposes of
@@ -27,7 +27,6 @@
 import preamble
 import csv
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import mvp
 from math import sqrt
 
@@ -72,20 +71,9 @@ def to_percent(values):
 colors = ["C2", "C0", "C1"]
 
 fig, axs = plt.subplots(3, 1, sharex=True)
-fig.set_size_inches(5, 7)
+fig.set_size_inches(5, 5.2)
 
 pvals = [8, 12, 16]
-
-
-# num_simulation_runs_unit = ""
-# num_simulation_runs = int(headers["num_cycles"])
-# if num_simulation_runs % 1000 == 0:
-#     num_simulation_runs //= 1000
-#     num_simulation_runs_unit = "k"
-# if num_simulation_runs % 1000 == 0:
-#     num_simulation_runs //= 1000
-#     num_simulation_runs_unit = "M"
-
 
 for pidx in range(len(pvals)):
     p = pvals[pidx]
@@ -105,13 +93,13 @@ for pidx in range(len(pvals)):
     ax.set_xscale("log", base=10)
     theory = to_percent(values["theoretical relative standard error default"])[0]
 
-    ax.set_ylim([-theory * 0.1, theory * 1.25])
+    ax.set_ylim([-theory * 0.05, theory * 1.25])
     ax.set_xlim([1, values["distinct count"][-1]])
     # ax.xaxis.grid(True)
     if pidx == len(pvals) - 1:
-        ax.set_xlabel("distinct count")
+        ax.set_xlabel(r"distinct count $\symCardinality$")
     # ax.yaxis.grid(True)
-    ax.set_ylabel("relative error (\%)")
+    ax.set_ylabel(r"relative error (\%)")
 
     # draw transition
     ax.plot(
@@ -126,12 +114,10 @@ for pidx in range(len(pvals)):
     )
 
     rel_error_martingale_theory = sqrt(
-        mvp.mvp_martingale_eval(b=2, d=2, q=6).mvp / (8 * pow(2, p))
+        mvp.mvp_martingale(b=2, d=2, q=6).mvp / (8 * pow(2, p))
     )
-    rel_error_ml_theory = sqrt(
-        mvp.mvp_lower_bound_eval(b=2, d=2, q=6).mvp / (8 * pow(2, p))
-    )
-    rel_error_fgra_theory = sqrt(mvp.mvp_gra_eval(b=2, d=2, q=6).mvp / (8 * pow(2, p)))
+    rel_error_ml_theory = sqrt(mvp.mvp_ml(b=2, d=2, q=6).mvp / (8 * pow(2, p)))
+    rel_error_fgra_theory = sqrt(mvp.mvp_gra(b=2, d=2, q=6).mvp / (8 * pow(2, p)))
 
     ax.plot(
         values["distinct count"],
@@ -164,7 +150,7 @@ for pidx in range(len(pvals)):
     ax.plot(
         values["distinct count"],
         to_percent(values["relative rmse maximum likelihood"]),
-        label="ML rmse ML",
+        label="ML rmse",
         color=colors[1],
         linestyle="dashed",
     )
@@ -197,48 +183,37 @@ for pidx in range(len(pvals)):
     )
 
     ax.text(
-        0.03,
-        0.945,
-        "$p=" + str(p) + "$",
+        0.017,
+        0.95,
+        r"ULL, $\symPrecision=" + str(p) + "$",
         transform=ax.transAxes,
         verticalalignment="top",
         horizontalalignment="left",
-        bbox=dict(facecolor="wheat"),
+        bbox=dict(facecolor="wheat", boxstyle="square,pad=0.2"),
     )
 
-legend_elements = [
-    Line2D([0], [0], color=colors[0]),
-    Line2D([0], [0], color=colors[1]),
-    Line2D([0], [0], color=colors[2]),
-    Line2D([0], [0], color=colors[0], linestyle="dashed"),
-    Line2D([0], [0], color=colors[1], linestyle="dashed"),
-    Line2D([0], [0], color=colors[2], linestyle="dashed"),
-    Line2D([0], [0], color=colors[0], linestyle="dotted"),
-    Line2D([0], [0], color=colors[1], linestyle="dotted"),
-    Line2D([0], [0], color=colors[2], linestyle="dotted"),
-]
+handles, labels = ax.get_legend_handles_labels()
+legend_order = [2, 5, 8, 1, 4, 7, 0, 3, 6]
 fig.legend(
-    legend_elements,
-    [
-        "FGRA bias",
-        "FGRA RMSE",
-        "FGRA theory",
-        "ML bias",
-        "ML RMSE",
-        "ML theory",
-        "martingale bias",
-        "martingale RMSE",
-        "martingale theory",
-    ],
+    [handles[i] for i in legend_order],
+    [labels[i] for i in legend_order],
     loc="lower center",
     ncol=3,
+    columnspacing=1,
+    labelspacing=0.2,
+    bbox_to_anchor=(0.52, 0.09),
+    borderpad=0.2,
+    handletextpad=0.4,
+    fancybox=False,
+    framealpha=1,
 )
-fig.subplots_adjust(top=0.99, bottom=0.162, left=0.095, right=0.97, hspace=0.05)
+
+fig.subplots_adjust(top=0.995, bottom=0.075, left=0.095, right=0.975, hspace=0.05)
 
 fig.savefig(
     "paper/estimation_error.pdf",
     format="pdf",
     dpi=1200,
-    metadata={"creationDate": None},
+    metadata={"CreationDate": None, "ModDate": None},
 )
 plt.close(fig)

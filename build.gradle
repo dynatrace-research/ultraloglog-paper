@@ -30,14 +30,12 @@ buildscript {
 }
 
 plugins {
-	id 'com.diffplug.spotless' version '6.21.0'
+	id 'com.diffplug.spotless' version '6.23.3'
 }
 
 def figFiles = []
 
 def mvpFigFiles = [
-	"paper/gra_efficiency.pdf",
-	"paper/efficiency_comparison.pdf",
 	"paper/mvp_martingale.pdf",
 	"paper/mvp_lower_bound.pdf",
 	"paper/mvp_compressed.pdf",
@@ -53,6 +51,16 @@ task makeMvpCharts (type: Exec) {
 	commandLine 'python', "python/plot_mvp_charts.py"
 }
 figFiles +=mvpFigFiles
+
+def graEfficiencyFigFiles = ["paper/gra_efficiency.pdf"]
+
+task makeGraEfficiencyCharts (type: Exec) {
+	inputs.files "python/preamble.py", "python/plot_estimator_efficiency_charts.py", "python/mvp.py", "paper/symbols.tex"
+	outputs.files graEfficiencyFigFiles
+	commandLine 'python', "python/plot_estimator_efficiency_charts.py"
+}
+figFiles +=graEfficiencyFigFiles
+
 
 
 def compressionInputFiles = [
@@ -86,10 +94,11 @@ figFiles +=errorFigFiles
 
 def performanceFigFiles = [
 	"paper/add_performance.pdf",
-	"paper/estimation_performance.pdf"
+	"paper/estimation_performance.pdf",
+	"paper/estimation_performance_over_error.pdf"
 ]
 task makePerformanceCharts (type: Exec) {
-	inputs.files "results/benchmark-results.json", "python/benchmark.py", "python/preamble.py", "paper/symbols.tex"
+	inputs.files "results/benchmark-results.json", "python/mvp.py", "python/benchmark.py", "python/preamble.py", "paper/symbols.tex"
 	outputs.files performanceFigFiles
 	commandLine 'python', "python/benchmark.py"
 }
@@ -110,7 +119,7 @@ figFiles += relativeApproximationErrorFigFiles
 
 task pdfFigures {
 	group 'Main'
-	dependsOn makeMvpCharts, makeRelativeApproximationErrorCharts, makeCompressionCharts,makeErrorCharts, makePerformanceCharts
+	dependsOn makeMvpCharts, makeRelativeApproximationErrorCharts,makeCompressionCharts,makeErrorCharts, makePerformanceCharts, makeGraEfficiencyCharts
 }
 
 static def readPythonLicense(licenseName) {
@@ -150,22 +159,31 @@ static def readJavaLicense(licenseName) {
 }
 
 spotless {
+	def googleJavaFormatVersion = '1.19.1'
+	def eclipseCdtVersion = '11.1'
+	def blackVersion = '23.12.1'
+	def greclipseVersion = '4.29'
 	ratchetFrom 'origin/main'
 	apply plugin: 'groovy'
 	groovyGradle {
 		target '*.gradle','java/*.gradle'
-		greclipse('4.27')
+		greclipse(greclipseVersion)
 	}
 	python {
 		target 'python/**/*.py'
-		black('23.3.0')
+		black(blackVersion)
 		licenseHeader readPythonLicense('license'), '(import|from)'
+	}
+	cpp {
+		target 'c++/empiricalMvpComputation.cpp'
+		eclipseCdt(eclipseCdtVersion)
+		licenseHeader readJavaLicense('license')
 	}
 	java {
 		target 'java/**/*.java'
 		importOrder()
 		removeUnusedImports()
-		googleJavaFormat('1.17.0')
+		googleJavaFormat(googleJavaFormatVersion)
 		licenseHeader readJavaLicense('license')
 	}
 }

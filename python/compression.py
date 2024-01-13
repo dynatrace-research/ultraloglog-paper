@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+# Copyright (c) 2023-2024 Dynatrace LLC. All rights reserved.
 #
 # This software and associated documentation files (the "Software")
 # are being made available by Dynatrace LLC for purposes of
@@ -28,6 +28,7 @@ import preamble
 import csv
 import matplotlib.pyplot as plt
 import mvp
+from functools import partial
 
 
 def read_data(data_file):
@@ -73,44 +74,58 @@ def plot():
         "zstd": "zstd",
         "bzip2": "bzip2",
     }
-    inputs = ["hll6", "hll8", "ull"]
+    inputs = ["ull", "hll6", "hll8"]
     pvals = [8, 12, 16]
 
-    fig, axs = plt.subplots(len(pvals), len(inputs), sharex=True, sharey="row")
-    fig.set_size_inches(5, 6)
+    fig, axs = plt.subplots(
+        len(pvals), len(inputs), sharex=True, sharey="row"
+    )  # "row")
+    fig.set_size_inches(5, 5.2)
 
     for p_idx in range(len(pvals)):
         p = pvals[p_idx]
-        d = read_data("results/compression/compression" + str(p) + ".csv")
-        values = d[1]
-        headers = d[0]
+        data = read_data("results/compression/compression" + str(p) + ".csv")
+        values = data[1]
 
         distinct_counts = values["true distinct count"]
 
         for input_idx in range(len(inputs)):
-            ax = axs[p_idx][input_idx]
+            ax = axs[input_idx][p_idx]
             input = inputs[input_idx]
 
             ax.set_xscale("log", base=10)
             ax.set_xlim([1, distinct_counts[-1]])
-            if p_idx + 1 == len(pvals):
-                ax.set_xlabel("distinct count")
-            if input_idx == 0:
+            if input_idx + 1 == len(inputs):
+                ax.set_xlabel(r"distinct count $\symCardinality$")
+            if p_idx == 0:
                 ax.set_ylabel("inverse compression ratio")
 
             if input == "ull":
-                best_compression_size = (
-                    mvp.calculate_entropy(d=2, b=2) / 8.0 * pow(2, p)
-                )
+                d = 2
             else:
-                best_compression_size = (
-                    mvp.calculate_entropy(d=0, b=2) / 8.0 * pow(2, p)
-                )
+                d = 0
 
-            if input == "ull":
-                uncompressed_size = pow(2, p)
-            else:
-                uncompressed_size = pow(2, p) * 6 / 8
+            # fisher = mvp.calculate_fisher_information(d=d, b=2)
+            entropy = mvp.calculate_entropy(d=d, b=2)
+            uncompressed_size = (6.0 + d) * pow(2, p) / 8.0
+            best_compression_size = entropy * pow(2, p) / 8
+            theoretical_mvp = mvp.mvp_ml(q=6, d=d, b=2).mvp
+
+            if p_idx == len(pvals) - 1:
+                compratio2mvp = lambda x, factor: x * factor
+                mvp2compratio = lambda x, factor: x / factor
+
+                secax = ax.secondary_yaxis(
+                    "right",
+                    functions=(
+                        partial(compratio2mvp, factor=theoretical_mvp),
+                        partial(mvp2compratio, factor=theoretical_mvp),
+                    ),
+                )
+                secax.set_ylabel("theoretical \\symMVP")
+                secax.set_yticks([0, 1, 2, 3, 4, 5, 6, 7])
+                ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2])
+                ax.set_ylim([0, mvp2compratio(7.6, theoretical_mvp)])
 
             distinct_count_range = [
                 values["true distinct count"][0],
@@ -125,6 +140,17 @@ def plot():
                 ],
                 label="theoretical limit",
                 linestyle="dashed",
+                color="gray",
+            )
+
+            ax.plot(
+                distinct_count_range,
+                [
+                    1,
+                    1,
+                ],
+                label="uncompressed",
+                linestyle="solid",
                 color="gray",
             )
 
@@ -147,40 +173,56 @@ def plot():
                 )
 
             if input == "hll6":
-                desc = "HLL\n$\symPrecision=" + str(p) + "$"
+                desc = r"HLL, $\symPrecision=" + str(p) + "$"
             elif input == "hll8":
-                desc = "HLL*\n$\symPrecision=" + str(p) + "$"
+                desc = r"HLL*, $\symPrecision=" + str(p) + "$"
             elif input == "ull":
-                desc = "ULL\n$\symPrecision=" + str(p) + "$"
+                desc = r"ULL, $\symPrecision=" + str(p) + "$"
             else:
                 assert False
 
             ax.text(
-                0.52,
-                0.08,
+                0.3,
+                0.06,
                 desc,
                 transform=ax.transAxes,
                 verticalalignment="bottom",
-                horizontalalignment="center",
-                bbox=dict(facecolor="wheat"),
+                horizontalalignment="left",
+                bbox=dict(facecolor="wheat", boxstyle="square,pad=0.2"),
             )
 
     for p_idx in range(len(pvals)):
         for input_idx in range(len(inputs)):
-            ax = axs[p_idx][input_idx]
-            ax.set_ylim([0, ax.get_ylim()[1]])
+            ax = axs[input_idx][p_idx]
+            # ax.set_ylim([0, 1.3])
+            # ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1])
+            ax.set_xticks([1, 1e6, 1e12, 1e18])
 
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=5, columnspacing=1.2)
+    legend_order = [1, 0, 2, 3, 4, 5]
+    fig.legend(
+        [handles[i] for i in legend_order],
+        [labels[i] for i in legend_order],
+        loc="upper center",
+        ncol=3,
+        bbox_to_anchor=(0.5, 0.998),
+        columnspacing=1,
+        labelspacing=0.2,
+        borderpad=0.2,
+        handletextpad=0.4,
+        fancybox=False,
+        framealpha=1,
+    )
+
     fig.subplots_adjust(
-        left=0.105, bottom=0.13, right=0.99, top=0.99, wspace=0.08, hspace=0.06
+        left=0.09, bottom=0.075, right=0.933, top=0.997, wspace=0.08, hspace=0.06
     )
 
     fig.savefig(
         "paper/compression.pdf",
         format="pdf",
         dpi=1200,
-        metadata={"creationDate": None},
+        metadata={"CreationDate": None, "ModDate": None},
     )
     plt.close(fig)
 

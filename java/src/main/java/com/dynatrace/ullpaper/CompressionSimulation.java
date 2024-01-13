@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+// Copyright (c) 2023-2024 Dynatrace LLC. All rights reserved.
 //
 // This software and associated documentation files (the "Software")
 // are being made available by Dynatrace LLC for purposes of
@@ -39,7 +39,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
@@ -277,6 +279,7 @@ public class CompressionSimulation {
     final String outputFile = args[0];
     final int p = Integer.parseInt(args[1]);
     final int sampleSize = 100;
+    final int maxParallelism = 16;
     List<BigInt> targetDistinctCounts = TestUtils.getDistinctCountValues(1e21, 0.05);
     final BigInt largeScaleSimulationModeDistinctCountLimit = BigInt.fromLong(1000000);
 
@@ -299,62 +302,81 @@ public class CompressionSimulation {
 
     PackedArray.PackedArrayHandler packedArrayHandler = PackedArray.getHandler(6);
 
-    IntStream.range(0, sampleSize)
-        .parallel()
-        .forEach(
-            sampleIdx -> {
-              Work work = workData.get();
-              work.reset(seeds[sampleIdx], largeScaleSimulationModeDistinctCountLimit);
+    try {
+      ForkJoinPool forkJoinPool =
+          new ForkJoinPool(Math.min(ForkJoinPool.getCommonPoolParallelism(), maxParallelism));
+      forkJoinPool
+          .submit(
+              () ->
+                  IntStream.range(0, sampleSize)
+                      .parallel()
+                      .forEach(
+                          sampleIdx -> {
+                            Work work = workData.get();
+                            work.reset(
+                                seeds[sampleIdx], largeScaleSimulationModeDistinctCountLimit);
 
-              final Transition[] transitions = work.transitions;
+                            final Transition[] transitions = work.transitions;
 
-              BigInt trueDistinctCount = BigInt.createZero();
-              int transitionIndex = 0;
-              for (int distinctCountIndex = 0;
-                  distinctCountIndex < targetDistinctCounts.size();
-                  ++distinctCountIndex) {
-                BigInt targetDistinctCount = targetDistinctCounts.get(distinctCountIndex);
-                BigInt limit = targetDistinctCount.copy();
-                limit.min(largeScaleSimulationModeDistinctCountLimit);
+                            BigInt trueDistinctCount = BigInt.createZero();
+                            int transitionIndex = 0;
+                            for (int distinctCountIndex = 0;
+                                distinctCountIndex < targetDistinctCounts.size();
+                                ++distinctCountIndex) {
+                              BigInt targetDistinctCount =
+                                  targetDistinctCounts.get(distinctCountIndex);
+                              BigInt limit = targetDistinctCount.copy();
+                              limit.min(largeScaleSimulationModeDistinctCountLimit);
 
-                while (trueDistinctCount.compareTo(limit) < 0) {
-                  long hash = work.prg.nextLong();
-                  work.add(hash);
-                  trueDistinctCount.increment();
-                }
-                if (trueDistinctCount.compareTo(targetDistinctCount) < 0) {
-                  while (transitionIndex < transitions.length
-                      && transitions[transitionIndex].distinctCount.compareTo(targetDistinctCount)
-                          <= 0) {
-                    work.add(transitions[transitionIndex].hash);
-                    transitionIndex += 1;
-                  }
-                  trueDistinctCount.set(targetDistinctCount);
-                }
+                              while (trueDistinctCount.compareTo(limit) < 0) {
+                                long hash = work.prg.nextLong();
+                                work.add(hash);
+                                trueDistinctCount.increment();
+                              }
+                              if (trueDistinctCount.compareTo(targetDistinctCount) < 0) {
+                                while (transitionIndex < transitions.length
+                                    && transitions[transitionIndex].distinctCount.compareTo(
+                                            targetDistinctCount)
+                                        <= 0) {
+                                  work.add(transitions[transitionIndex].hash);
+                                  transitionIndex += 1;
+                                }
+                                trueDistinctCount.set(targetDistinctCount);
+                              }
 
-                for (int registerIdx = 0; registerIdx < (1 << p); ++registerIdx) {
-                  work.hllExpanded[registerIdx] =
-                      (byte) packedArrayHandler.get(work.hll.getState(), registerIdx);
-                }
+                              for (int registerIdx = 0; registerIdx < (1 << p); ++registerIdx) {
+                                work.hllExpanded[registerIdx] =
+                                    (byte) packedArrayHandler.get(work.hll.getState(), registerIdx);
+                              }
 
-                Result result = results.get(distinctCountIndex).get(sampleIdx);
+                              Result result = results.get(distinctCountIndex).get(sampleIdx);
 
-                for (int compressionConfigIdx = 0;
-                    compressionConfigIdx < COMPRESSION_TEST_CONFIGS.size();
-                    ++compressionConfigIdx) {
-                  CompressionTestConfig compressionTestConfig =
-                      COMPRESSION_TEST_CONFIGS.get(compressionConfigIdx);
-                  byte[] state =
-                      compressionTestConfig
-                          .getSelector()
-                          .getState(work.hll.getState(), work.hllExpanded, work.ull.getState());
-                  result.compressedBytes[compressionConfigIdx] =
-                      compressionTestConfig.getCompressor().getCompressedSizeInBytes(state);
-                }
-              }
-            });
+                              for (int compressionConfigIdx = 0;
+                                  compressionConfigIdx < COMPRESSION_TEST_CONFIGS.size();
+                                  ++compressionConfigIdx) {
+                                CompressionTestConfig compressionTestConfig =
+                                    COMPRESSION_TEST_CONFIGS.get(compressionConfigIdx);
+                                byte[] state =
+                                    compressionTestConfig
+                                        .getSelector()
+                                        .getState(
+                                            work.hll.getState(),
+                                            work.hllExpanded,
+                                            work.ull.getState());
+                                result.compressedBytes[compressionConfigIdx] =
+                                    compressionTestConfig
+                                        .getCompressor()
+                                        .getCompressedSizeInBytes(state);
+                              }
+                            }
+                          }))
+          .get();
 
-    try (FileWriter o = new FileWriter(outputFile)) {
+    } catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+
+    try (FileWriter o = new FileWriter(outputFile, StandardCharsets.UTF_8)) {
 
       o.write("p = " + p + "; sample_size = " + sampleSize + '\n');
       o.write("true distinct count");

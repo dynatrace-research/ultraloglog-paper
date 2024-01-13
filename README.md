@@ -5,39 +5,35 @@ This repository contains the source code to reproduce the results and figures pr
 ## Abstract
 Since its invention HyperLogLog has become the standard algorithm for approximate distinct counting. Due to its space efficiency and suitability for distributed systems, it is widely used and also implemented in numerous databases. This work presents UltraLogLog, which shares the same practical properties as HyperLogLog. It is commutative, idempotent, mergeable, and has a fast guaranteed constant-time insert operation. At the same time, it requires 28% less space to encode the same amount of distinct count information, which can be extracted using the maximum likelihood method. Alternatively, a simpler and faster estimator is proposed, which still achieves a space reduction of 24%, but at an estimation speed comparable to that of HyperLogLog. In a non-distributed setting where martingale estimation can be used, UltraLogLog is able to reduce space by 17%. Moreover, its smaller entropy and its 8-bit registers lead to better compaction when using standard compression algorithms. All this is verified by experimental results that are in perfect agreement with the theoretical analysis which also outlines potential for even more space-efficient data structures. A production-ready Java implementation of UltraLogLog has been released as part of the open-source [Hash4j library](https://github.com/dynatrace-oss/hash4j).
 
-## Steps to reproduce the results and figures on Windows 10/11
-1. Install the Windows Subsystem for Linux (WSL) with [Ubuntu 22.04.2 LTS](https://apps.microsoft.com/store/detail/ubuntu-22042-lts/9PN20MSR04DW) and increase the memory limits of WSL to 24GB by adding
+## Steps to reproduce the results and figures presented in the paper
+1. Create an Amazon EC2 [c5.metal](https://aws.amazon.com/ec2/instance-types/c5/) instance with Ubuntu Server 22.04 LTS and 20GiB of storage.
+2. Clone the repository including submodules:
    ```
-   [wsl2]
-   memory=24GB 
+   git clone https://github.com/dynatrace-research/ultraloglog-paper.git && cd ultraloglog-paper && git submodule init && git submodule update
    ```
-   to `C:\Users\<UserName>\.wslconfig` as described [here](https://learn.microsoft.com/en-us/windows/wsl/wsl-config).
-
-4. Install all required packages:
+3. Install all required packages:
    ```
-   sudo apt update && sudo apt --yes install openjdk-17-jre python-is-python3 python3-pip texlive texlive-latex-extra texlive-fonts-extra texlive-science cm-super && pip install matplotlib matplotlib-label-lines scipy
+   sudo apt update && sudo NEEDRESTART_MODE=a apt --yes install openjdk-11-jdk openjdk-21-jdk python-is-python3 python3-pip texlive texlive-latex-extra texlive-fonts-extra texlive-science cm-super && pip install -r python/requirements.txt
    ```
-5. Clone the repository including submodules:
+4. To reproduce the performance benchmark results `results/benchmark-results.json` disable Turbo Boost ([set P-state to 1](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/processor_state_control.html)), run the `runBenchmarks` task in the root directory (takes ~9.5h), and enable Turbo Boost again:
    ```
-   git clone --recurse-submodules https://github.com/dynatrace-research/ultraloglog-paper.git
+   sudo sh -c "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo"; ./gradlew runBenchmarks; sudo sh -c "echo 0 > /sys/devices/system/cpu/intel_pstate/no_turbo"
    ```
-6. Run the performance benchmarks in the root directory (takes ~8h):
+5. To reproduce the compression simulation results `results/compression/*.csv` run the `runCompressionSimulation` task in the root directory (takes ~45min):
    ```
-    ./gradlew runBenchmarks
+   ./gradlew runCompressionSimulation
    ```
-7. Run the compression simulations in the root directory (takes ~2h):
+6. To reproduce the estimation error results `hash4j/test-results/*.csv` run the `simulateEstimationErrors` tasks in the `hash4j` directory  (takes ~17h):
    ```
-    ./gradlew runCompressionSimulation
+   cd hash4j; ./gradlew simulateEstimationErrors; cd ..
    ```
-8. Run the estimation error simulations in the `hash4j` directory (takes ~50h):
+7. (Re-)generate all figures in the `paper` directory by executing the `pdfFigures` task in the root directory (takes ~15min):
    ```
-   ./gradlew simulateEstimationErrors
+   ./gradlew pdfFigures
    ```
-9. Compute the empirical memory-variance product (MVP) based on the actual allocated memory and the serialization size as given in `results\comparison-empirical-mvp` by running the `runEmpiricalMVPComputation` task in the root directory (takes ~2h, not needed for the figures):
+   The produced figures can be found in the `paper` directory. Furthermore, numeric constants given in the paper can be found in `results\mvp.txt`.
+8. To examine the empirical memory-variance product (MVP) based on the actual allocated memory and the serialization size of different data structure implementations for approximate distinct counting run the `runEmpiricalMVPComputation` task in the root directory (takes ~2.5h, not needed for the figures):
    ```
    ./gradlew runEmpiricalMVPComputation
    ```
-10. Generate all figures in the `paper` directory by executing the `pdfFigures` task in the root directory (takes ~5min):
-    ```
-    ./gradlew pdfFigures
-    ```
+   The results can be found in the `results\comparison-empirical-mvp` folder. In particular, the results in `Apache Data Sketches Java CPC.csv` confirm the statement in the introduction section of the paper that the memory footprint of the CPC implementation of [Apache DataSketches](https://github.com/apache/datasketches-java) is more than twice as large as the serialization size.
