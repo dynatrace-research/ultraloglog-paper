@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+# Copyright (c) 2023-2024 Dynatrace LLC. All rights reserved.
 #
 # This software and associated documentation files (the "Software")
 # are being made available by Dynatrace LLC for purposes of
@@ -24,76 +24,78 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 #
+from mpmath import mp
 from collections import namedtuple
 from scipy.optimize import minimize_scalar
 from scipy.optimize import minimize
-import scipy.integrate as integrate
-from math import log, expm1, log1p, sqrt
-from scipy.special import gamma, zeta
 import numpy
+
+mp.dps = 50
 
 Result = namedtuple("Result", ["q", "d", "b", "t", "mvp"])
 
 
 def expm1divx(x):
     if x == 0.0:
-        return 1
+        return mp.mpf("1")
     else:
-        return expm1(x) / x
+        return mp.expm1(x) / x
 
 
 def calculate_fisher_information(d, b):
     if b > 1:
-        return zeta(2.0, 1.0 + pow(b, -d) / (b - 1.0)) / log(b)
+        return mp.zeta(2.0, 1.0 + mp.power(b, -d) / (b - 1.0)) / mp.log(b)
     else:
-        return 1
+        return mp.mpf("1")
 
 
 def entropy_integrand(d, b, z):
     assert b > 1
-    p = pow(b, -d) / (b - 1)
-    return pow(z, p) * ((1 - z) * log1p(-z) / (z * log(z)))
+    p = mp.power(b, -d) / (b - 1)
+    return mp.power(z, p) * ((1 - z) * mp.log1p(-z) / (z * mp.log(z)))
 
 
 def calculate_entropy(d, b):
     if b > 1:
-        p = pow(b, -d) / (b - 1)
-        i = integrate.quad(lambda z: entropy_integrand(d=d, b=b, z=z), 0, 1)
-        return (1.0 / (1 + p) + i[0]) / (log(2) * log(b))
+        p = mp.power(b, -d) / (b - 1)
+        i = mp.quad(lambda z: entropy_integrand(d=d, b=b, z=z), [0, 1])
+        return (mp.mpf("1.0") / (1 + p) + i) / (mp.log(2) * mp.log(b))
     else:
-        return float("inf")
+        return mp.mpf("inf")
 
 
-def mvp_compressed_func(d, b):
-    return calculate_entropy(d=d, b=b) / calculate_fisher_information(d=d, b=b)
+def mvp_ml_compressed_func(d, b):
+    return float(calculate_entropy(d=d, b=b) / calculate_fisher_information(d=d, b=b))
 
 
-def mvp_compressed_martingale_func(d, b):
-    return (
-        calculate_entropy(d=d, b=b) * (b - 1.0 + pow(b, -d)) / (2.0 * expm1divx(log(b)))
+def mvp_martingale_compressed_func(d, b):
+    return float(
+        calculate_entropy(d=d, b=b)
+        * (b - 1.0 + mp.power(b, -d))
+        / (2.0 * expm1divx(mp.log(b)))
     )
 
 
-def mvp_compressed_eval(d=None, b=None):
-    d_max = 30
+def mvp_ml_compressed(d=None, b=None):
+    d_max = 100
     b_min = 1
     b_max = 5
 
     result = None
     if d is not None and b is not None:
-        v = mvp_compressed_func(d=d, b=b)
-        result = Result(None, d, b, None, v)
+        mvp = mvp_ml_compressed_func(d=d, b=b)
+        result = Result(None, d, b, None, mvp)
     elif d is None:
         for d in range(0, d_max + 1):
-            r = mvp_compressed_eval(d, b)
+            r = mvp_ml_compressed(d, b)
             if result is None or r.mvp < result.mvp:
                 result = r
     elif d is not None and b is None:
         r = minimize_scalar(
-            lambda x: mvp_compressed_func(d=d, b=x),
+            lambda x: mvp_ml_compressed_func(d=d, b=x),
             bounds=(b_min, b_max),
             method="Bounded",
-            options={"xatol": 1e-12},
+            options={"xatol": 1e-20},
         )
         assert r.success
         result = Result(None, d, r.x, None, r.fun)
@@ -103,26 +105,26 @@ def mvp_compressed_eval(d=None, b=None):
     return result
 
 
-def mvp_compressed_martingale_eval(d=None, b=None):
-    d_max = 30
+def mvp_martingale_compressed(d=None, b=None):
+    d_max = 100
     b_min = 1
     b_max = 5
 
     result = None
     if d is not None and b is not None:
-        v = mvp_compressed_martingale_func(d=d, b=b)
-        result = Result(None, d, b, None, v)
+        mvp = mvp_martingale_compressed_func(d=d, b=b)
+        result = Result(None, d, b, None, mvp)
     elif d is None:
         for d in range(0, d_max + 1):
-            r = mvp_compressed_martingale_eval(d, b)
+            r = mvp_martingale_compressed(d, b)
             if result is None or r.mvp < result.mvp:
                 result = r
     elif d is not None and b is None:
         r = minimize_scalar(
-            lambda x: mvp_compressed_martingale_func(d=d, b=x),
+            lambda x: mvp_martingale_compressed_func(d=d, b=x),
             bounds=(b_min, b_max),
             method="Bounded",
-            options={"xatol": 1e-12},
+            options={"xatol": 1e-20},
         )
         assert r.success
         result = Result(None, d, r.x, None, r.fun)
@@ -133,21 +135,21 @@ def mvp_compressed_martingale_eval(d=None, b=None):
 
 
 def omega0(b, t):
-    result = pow(pow(b, 3) - b + 1, -t) - pow(b, -3 * t)
+    result = mp.power(mp.power(b, 3) - b + 1, -t) - mp.power(b, -3 * t)
     assert result >= 0
     return result
 
 
 def omega1(b, t):
-    result = pow(pow(b, 2) - b + 1, -t) - pow(b, -2 * t) - omega0(b, t)
+    result = mp.power(mp.power(b, 2) - b + 1, -t) - mp.power(b, -2 * t) - omega0(b, t)
     assert result >= 0
     return result
 
 
 def omega2(b, t):
     result = (
-        pow(pow(b, 3) - pow(b, 2) + 1, -t)
-        - pow(pow(b, 3) - pow(b, 2) + b, -t)
+        mp.power(mp.power(b, 3) - mp.power(b, 2) + 1, -t)
+        - mp.power(mp.power(b, 3) - mp.power(b, 2) + b, -t)
         - omega0(b, t)
     )
     assert result >= 0
@@ -155,26 +157,26 @@ def omega2(b, t):
 
 
 def omega3(b, t):
-    result = 1 - pow(b, -t) - omega0(b, t) - omega1(b, t) - omega2(b, t)
+    result = 1 - mp.power(b, -t) - omega0(b, t) - omega1(b, t) - omega2(b, t)
     assert result >= 0
     return result
 
 
 def mvp_fgra_func(required_bits, b, t):
     sum = (
-        pow(omega0(b, t), 2) / omega0(b, 2 * t)
-        + pow(omega1(b, t), 2) / omega1(b, 2 * t)
-        + pow(omega2(b, t), 2) / omega2(b, 2 * t)
-        + pow(omega3(b, t), 2) / omega3(b, 2 * t)
+        mp.power(omega0(b, t), 2) / omega0(b, 2 * t)
+        + mp.power(omega1(b, t), 2) / omega1(b, 2 * t)
+        + mp.power(omega2(b, t), 2) / omega2(b, 2 * t)
+        + mp.power(omega3(b, t), 2) / omega3(b, 2 * t)
     )
-    return (
+    return float(
         required_bits
-        / pow(t, 2)
-        * (gamma(2 * t) * log(b) / (pow(gamma(t), 2) * sum) - 1)
+        / mp.power(t, 2)
+        * (mp.gamma(2 * t) * mp.log(b) / (mp.power(mp.gamma(t), 2) * sum) - 1)
     )
 
 
-def mvp_fgra_eval(q, b, t=None):
+def mvp_fgra(q, b, t=None):
     assert b == 2
 
     t_min = 1e-3
@@ -183,14 +185,14 @@ def mvp_fgra_eval(q, b, t=None):
     required_bits = q + d
     result = None
     if t is not None:
-        v = mvp_fgra_func(required_bits, b, t)
-        result = Result(q, d, b, t, v)
+        mvp = mvp_fgra_func(required_bits, b, t)
+        result = Result(q, d, b, t, mvp)
     else:
         r = minimize_scalar(
             lambda x: mvp_fgra_func(required_bits, b, x),
             bounds=(t_min, t_max),
             method="Bounded",
-            options={"xatol": 1e-12},
+            options={"xatol": 1e-20},
         )
         assert r.success
         result = Result(q, d, b, r.x, r.fun)
@@ -202,14 +204,14 @@ def mvp_fgra_eval(q, b, t=None):
 
 def calculate_contribution_coefficients_fgra(r):
     assert r.d == 2
-    b = r.b
-    t = r.t
+    b = mp.mpmathify(r.b)
+    t = mp.mpmathify(r.t)
 
     sum = (
-        pow(omega0(b, t), 2) / omega0(b, 2 * t)
-        + pow(omega1(b, t), 2) / omega1(b, 2 * t)
-        + pow(omega2(b, t), 2) / omega2(b, 2 * t)
-        + pow(omega3(b, t), 2) / omega3(b, 2 * t)
+        mp.power(omega0(b, t), 2) / omega0(b, 2 * t)
+        + mp.power(omega1(b, t), 2) / omega1(b, 2 * t)
+        + mp.power(omega2(b, t), 2) / omega2(b, 2 * t)
+        + mp.power(omega3(b, t), 2) / omega3(b, 2 * t)
     )
 
     x = numpy.array(
@@ -221,25 +223,25 @@ def calculate_contribution_coefficients_fgra(r):
         ]
     )
 
-    coefficients = x * (log(b) / (gamma(t) * sum))
+    coefficients = x * (mp.log(b) / (mp.gamma(t) * sum))
     return coefficients.astype(str)
 
 
 def calculate_contribution_coefficients_gra(r):
-    b = r.b
-    t = r.t
+    b = mp.mpmathify(r.b)
+    t = mp.mpmathify(r.t)
     d = r.d
 
     size = 2**d
     x = numpy.zeros(size)
     for i in range(0, size):
-        s = 1 / (pow(b, t) - 1)
+        s = 1 / (mp.power(b, t) - 1)
         for j in range(1, d + 1):
             if i & (1 << (d - j)) == 0:
-                s += pow(b, t * j)
+                s += mp.power(b, t * j)
         x[i] = s
 
-    coefficients = x * log(b) * pow(b - 1 + pow(b, -t), t) / gamma(t)
+    coefficients = x * mp.log(b) * mp.power(b - 1 + mp.power(b, -t), t) / mp.gamma(t)
     return coefficients.astype(str)
 
 
@@ -251,22 +253,22 @@ def mvp_gra_func(q, d, b, t):
     for s in range(1, d + 1):
         sum += (
             2.0
-            * log(b)
-            * pow(b, -t * s)
-            / pow(1 + (b - 1) * pow(b, -s) / (b - 1 + pow(b, -d)), 2 * t)
+            * mp.log(b)
+            * mp.power(b, -t * s)
+            / mp.power(1 + (b - 1) * mp.power(b, -s) / (b - 1 + mp.power(b, -d)), 2 * t)
         )
-    sum += log(b)
-    sum += 2 * pow(b, -t * d) / (t * expm1divx(t * log(b)))
-    sum *= gamma(2 * t) / pow(gamma(t), 2)
+    sum += mp.log(b)
+    sum += 2 * mp.power(b, -t * d) / (t * expm1divx(t * mp.log(b)))
+    sum *= mp.gamma(mp.mpmathify(2) * t) / mp.power(mp.gamma(t), 2)
     sum -= 1
     sum /= t * t
     result = sum * required_bits
     assert result > 0
-    return result
+    return float(result)
 
 
-def mvp_gra_eval(q, d=None, b=None, t=None):
-    d_max = 20
+def mvp_gra(q, d=None, b=None, t=None):
+    d_max = 100
     b_min = 1
     b_start = 2
     b_max = 5
@@ -276,14 +278,14 @@ def mvp_gra_eval(q, d=None, b=None, t=None):
 
     result = None
     if d is not None and b is not None and t is not None:
-        v = mvp_gra_func(q, d, b, t)
-        result = Result(q, d, b, t, v)
+        mvp = mvp_gra_func(q, d, b, t)
+        result = Result(q, d, b, t, mvp)
     elif d is not None and b is not None and t is None:
         r = minimize_scalar(
             lambda x: mvp_gra_func(q, d, b, x),
             bounds=(t_min, t_max),
             method="Bounded",
-            options={"xatol": 1e-12},
+            options={"xatol": 1e-20},
         )
         assert r.success
         result = Result(q, d, b, r.x, r.fun)
@@ -297,7 +299,7 @@ def mvp_gra_eval(q, d=None, b=None, t=None):
         result = Result(q, d, r.x[0], r.x[1], r.fun)
     elif d is None:
         for d in range(0, d_max + 1):
-            r = mvp_gra_eval(q, d, b, t)
+            r = mvp_gra(q, d, b, t)
             if result is None or r.mvp < result.mvp:
                 result = r
 
@@ -307,23 +309,23 @@ def mvp_gra_eval(q, d=None, b=None, t=None):
 
 
 def mvp_martingale_func(q, d, b):
-    x = (b - 1.0 + pow(b, -d)) / (2.0 * expm1divx(log(b)))
+    x = (b - 1.0 + mp.power(b, -d)) / (2.0 * expm1divx(mp.log(b)))
     required_bits = q + d
-    return x * required_bits
+    return float(x * required_bits)
 
 
-def mvp_martingale_eval(q, d=None, b=None):
-    d_max = 30
+def mvp_martingale(q, d=None, b=None):
+    d_max = 100
     b_min = 1
     b_max = 5
 
     result = None
     if d is not None and b is not None:
-        v = mvp_martingale_func(q, d, b)
-        result = Result(q, d, b, None, v)
+        mvp = mvp_martingale_func(q, d, b)
+        result = Result(q, d, b, None, mvp)
     elif d is None:
         for d in range(0, d_max + 1):
-            r = mvp_martingale_eval(q, d, b)
+            r = mvp_martingale(q, d, b)
             if result is None or r.mvp < result.mvp:
                 result = r
     elif d is not None and b is None:
@@ -331,7 +333,7 @@ def mvp_martingale_eval(q, d=None, b=None):
             lambda x: mvp_martingale_func(q, d, x),
             bounds=(b_min, b_max),
             method="Bounded",
-            options={"xatol": 1e-12},
+            options={"xatol": 1e-20},
         )
         assert r.success
         result = Result(q, d, r.x, None, r.fun)
@@ -341,34 +343,36 @@ def mvp_martingale_eval(q, d=None, b=None):
     return result
 
 
-def mvp_lower_bound_func(q, d, b):
+def mvp_ml_func(q, d, b):
     required_bits = q + d
     if b > 1.0:
-        return required_bits * log(b) / zeta(2.0, 1.0 + pow(b, -d) / (b - 1.0))
+        return float(
+            required_bits * mp.log(b) / mp.zeta(2.0, 1.0 + mp.power(b, -d) / (b - 1.0))
+        )
     else:
         return required_bits
 
 
-def mvp_lower_bound_eval(q, d=None, b=None):
-    d_max = 30
+def mvp_ml(q, d=None, b=None):
+    d_max = 100
     b_min = 1
     b_max = 5
 
     result = None
     if d is not None and b is not None:
-        v = mvp_lower_bound_func(q, d, b)
-        result = Result(q, d, b, None, v)
+        mvp = mvp_ml_func(q, d, b)
+        result = Result(q, d, b, None, mvp)
     elif d is None:
         for d in range(0, d_max + 1):
-            r = mvp_lower_bound_eval(q, d, b)
+            r = mvp_ml(q, d, b)
             if result is None or r.mvp < result.mvp:
                 result = r
     elif d is not None and b is None:
         r = minimize_scalar(
-            lambda x: mvp_lower_bound_func(q, d, x),
+            lambda x: mvp_ml_func(q, d, x),
             bounds=(b_min, b_max),
             method="Bounded",
-            options={"xatol": 1e-12},
+            options={"xatol": 1e-20},
         )
         assert r.success
         result = Result(q, d, r.x, None, r.fun)

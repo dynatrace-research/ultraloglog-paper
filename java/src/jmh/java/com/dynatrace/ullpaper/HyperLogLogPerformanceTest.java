@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Dynatrace LLC. All rights reserved.
+// Copyright (c) 2022-2024 Dynatrace LLC. All rights reserved.
 //
 // This software and associated documentation files (the "Software")
 // are being made available by Dynatrace LLC for purposes of
@@ -27,13 +27,24 @@
 package com.dynatrace.ullpaper;
 
 import com.dynatrace.hash4j.distinctcount.HyperLogLog;
+import com.dynatrace.hash4j.distinctcount.MartingaleEstimator;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
+import java.util.Arrays;
 import java.util.SplittableRandom;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 
 public class HyperLogLogPerformanceTest {
+
+  private static final VarHandle INT_HANDLE =
+      MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
+
+  private static int getInt(byte[] b, int off) {
+    return (int) INT_HANDLE.get(b, off);
+  }
 
   private static HyperLogLog generate(SplittableRandom random, long numElements, int precision) {
     HyperLogLog sketch = HyperLogLog.create(precision);
@@ -66,7 +77,8 @@ public class HyperLogLogPerformanceTest {
       "10",
       "5",
       "2",
-      "1"
+      "1",
+      "0"
     })
     public int numElements;
 
@@ -89,6 +101,17 @@ public class HyperLogLogPerformanceTest {
       sketch.add(addState.random.nextLong());
     }
     blackhole.consume(sketch);
+  }
+
+  @Benchmark
+  @BenchmarkMode(Mode.AverageTime)
+  public void distinctCountAddWithMartingaleEstimator(AddState addState, Blackhole blackhole) {
+    final HyperLogLog sketch = HyperLogLog.create(addState.precision);
+    final MartingaleEstimator martingaleEstimator = new MartingaleEstimator();
+    for (long i = 0; i < addState.numElements; ++i) {
+      sketch.add(addState.random.nextLong(), martingaleEstimator);
+    }
+    blackhole.consume(martingaleEstimator.getDistinctCountEstimate());
   }
 
   public enum Estimator {
@@ -129,7 +152,8 @@ public class HyperLogLogPerformanceTest {
       "10",
       "5",
       "2",
-      "1"
+      "1",
+      "0"
     })
     public int numElements;
 
@@ -139,15 +163,25 @@ public class HyperLogLogPerformanceTest {
     @Param public Estimator estimator;
 
     @Param({"100"})
-    public int numExamples;
+    public int numMaxDifferentExamples;
+
+    @Param({"10000000"})
+    public int memorySizeForExamplesInBytes;
 
     @Setup(Level.Trial)
     public void init() {
-      SplittableRandom random = new SplittableRandom(ThreadLocalRandom.current().nextLong());
-      sketches =
-          Stream.generate(() -> generate(random, numElements, precision))
-              .limit(numExamples)
-              .toArray(i -> new HyperLogLog[i]);
+      SplittableRandom random = new SplittableRandom();
+      int numExamples =
+          memorySizeForExamplesInBytes / HyperLogLog.create(precision).getState().length;
+      sketches = new HyperLogLog[numExamples];
+      for (int i = 0; i < numExamples; ++i) {
+        if (i < numMaxDifferentExamples) {
+          sketches[i] = generate(random, numElements, precision);
+        } else {
+          byte[] data = sketches[i % numMaxDifferentExamples].getState();
+          sketches[i] = HyperLogLog.wrap(Arrays.copyOf(data, data.length));
+        }
+      }
     }
 
     @TearDown(Level.Trial)
@@ -161,7 +195,68 @@ public class HyperLogLogPerformanceTest {
   public void distinctCountEstimation(EstimationState estimationState, Blackhole blackhole) {
     HyperLogLog.Estimator estimator = estimationState.estimator.estimator;
     for (int i = 0; i < estimationState.sketches.length; ++i) {
-      blackhole.consume(estimator.estimate(estimationState.sketches[i]));
+      double estimate = estimator.estimate(estimationState.sketches[i]);
+      blackhole.consume(estimate);
+    }
+  }
+
+  @State(Scope.Benchmark)
+  public static class RegisterScanState {
+
+    HyperLogLog[] sketches = null;
+
+    @Param({"16", "15", "14", "13", "12", "11", "10", "9", "8"})
+    public int precision;
+
+    @Param public Estimator estimator;
+
+    @Param({"10000000"})
+    public int memorySizeForExamplesInBytes;
+
+    @Setup(Level.Trial)
+    public void init() {
+      int numExamples =
+          memorySizeForExamplesInBytes / HyperLogLog.create(precision).getState().length;
+      sketches =
+          Stream.generate(() -> HyperLogLog.create(precision))
+              .limit(numExamples)
+              .toArray(i -> new HyperLogLog[i]);
+    }
+
+    @TearDown(Level.Trial)
+    public void finish() {
+      sketches = null;
+    }
+  }
+
+  @Benchmark
+  @BenchmarkMode(Mode.AverageTime)
+  public void registerScan(RegisterScanState registerScanState, Blackhole blackhole) {
+    for (int i = 0; i < registerScanState.sketches.length; ++i) {
+      byte[] state = registerScanState.sketches[i].getState();
+      int sum = 0;
+
+      for (int off = 0; off + 6 <= state.length; off += 6) {
+        int s0 = getInt(state, off);
+        int s1 = getInt(state, off + 2);
+        int r0 = s0 & 0x3F;
+        int r1 = (s0 >>> 6) & 0x3F;
+        int r2 = (s0 >>> 12) & 0x3F;
+        int r3 = (s0 >>> 18) & 0x3F;
+        int r4 = (s1 >>> 8) & 0x3F;
+        int r5 = (s1 >>> 14) & 0x3F;
+        int r6 = (s1 >>> 20) & 0x3F;
+        int r7 = (s1 >>> 26) & 0x3F;
+        sum += r0;
+        sum += r1;
+        sum += r2;
+        sum += r3;
+        sum += r4;
+        sum += r5;
+        sum += r6;
+        sum += r7;
+      }
+      blackhole.consume(sum);
     }
   }
 }
