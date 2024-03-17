@@ -1,11 +1,12 @@
-// Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+//
+// Copyright (c) 2024 Dynatrace LLC. All rights reserved.
 //
 // This software and associated documentation files (the "Software")
-// are being made available by Dynatrace LLC for purposes of
+// are being made available by Dynatrace LLC for the sole purpose of
 // illustrating the implementation of certain algorithms which have
 // been published by Dynatrace LLC. Permission is hereby granted,
 // free of charge, to any person obtaining a copy of the Software,
-// to view and use the Software for internal, non-productive,
+// to view and use the Software for internal, non-production,
 // non-commercial purposes only – the Software may not be used to
 // process live data or distributed, sublicensed, modified and/or
 // sold either alone or as part of or in combination with any other
@@ -22,15 +23,9 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-
-buildscript {
-	repositories {
-		mavenCentral()
-	}
-}
-
+//
 plugins {
-	id 'com.diffplug.spotless' version '6.23.3'
+	id 'com.diffplug.spotless' version '6.25.0'
 }
 
 def figFiles = []
@@ -159,15 +154,16 @@ static def readJavaLicense(licenseName) {
 }
 
 spotless {
-	def googleJavaFormatVersion = '1.19.1'
-	def eclipseCdtVersion = '11.1'
-	def blackVersion = '23.12.1'
+	def googleJavaFormatVersion = '1.20.0'
+	def eclipseCdtVersion = '11.3'
+	def blackVersion = '24.2.0'
 	def greclipseVersion = '4.29'
 	ratchetFrom 'origin/main'
 	apply plugin: 'groovy'
 	groovyGradle {
 		target '*.gradle','java/*.gradle'
 		greclipse(greclipseVersion)
+		licenseHeader readJavaLicense('license'), 'plugins'
 	}
 	python {
 		target 'python/**/*.py'

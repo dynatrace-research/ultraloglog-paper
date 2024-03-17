@@ -1,11 +1,12 @@
-// Copyright (c) 2023 Dynatrace LLC. All rights reserved.
+//
+// Copyright (c) 2024 Dynatrace LLC. All rights reserved.
 //
 // This software and associated documentation files (the "Software")
-// are being made available by Dynatrace LLC for purposes of
+// are being made available by Dynatrace LLC for the sole purpose of
 // illustrating the implementation of certain algorithms which have
 // been published by Dynatrace LLC. Permission is hereby granted,
 // free of charge, to any person obtaining a copy of the Software,
-// to view and use the Software for internal, non-productive,
+// to view and use the Software for internal, non-production,
 // non-commercial purposes only – the Software may not be used to
 // process live data or distributed, sublicensed, modified and/or
 // sold either alone or as part of or in combination with any other
@@ -22,7 +23,7 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
-
+//
 plugins {
 	id 'java'
 	id 'me.champeau.jmh' version '0.7.2'
@@ -33,11 +34,11 @@ repositories {
 }
 
 dependencies {
-	implementation 'com.dynatrace.hash4j:hash4j:0.15.0'
+	implementation 'com.dynatrace.hash4j:hash4j:0.17.0'
 	implementation group: 'org.hipparchus', name: 'hipparchus-stat', version: '3.0'
-	testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.10.1'
-	testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.24.2'
-	testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.10.1'
+	testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.10.2'
+	testImplementation group: 'org.assertj', name: 'assertj-core', version: '3.25.3'
+	testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.10.2'
 	implementation 'org.apache.datasketches:datasketches-java:5.0.1'
 	implementation group: 'org.openjdk.jol', name: 'jol-core', version: '0.17'
 	implementation group: 'com.google.zetasketch', name: 'zetasketch', version: '0.1.0'

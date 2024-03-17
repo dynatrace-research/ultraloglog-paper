@@ -23,7 +23,7 @@ Since its invention HyperLogLog has become the standard algorithm for approximat
    ```
    ./gradlew runCompressionSimulation
    ```
-6. To reproduce the estimation error results `hash4j/test-results/*.csv` run the `simulateEstimationErrors` tasks in the `hash4j` directory  (takes ~17h):
+6. To reproduce the estimation error results `hash4j/test-results/*.csv` run the `simulateEstimationErrors` task in the `hash4j` directory (takes ~12h):
    ```
    cd hash4j; ./gradlew simulateEstimationErrors; cd ..
    ```

@@ -1,11 +1,11 @@
 Copyright (c) $YEAR Dynatrace LLC. All rights reserved.
 
 This software and associated documentation files (the "Software")
-are being made available by Dynatrace LLC for purposes of
+are being made available by Dynatrace LLC for the sole purpose of
 illustrating the implementation of certain algorithms which have
 been published by Dynatrace LLC. Permission is hereby granted,
 free of charge, to any person obtaining a copy of the Software,
-to view and use the Software for internal, non-productive,
+to view and use the Software for internal, non-production,
 non-commercial purposes only – the Software may not be used to
 process live data or distributed, sublicensed, modified and/or
 sold either alone or as part of or in combination with any other
