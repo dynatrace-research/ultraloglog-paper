@@ -37,3 +37,7 @@ Since its invention HyperLogLog has become the standard algorithm for approximat
    ./gradlew runEmpiricalMVPComputation
    ```
    The results can be found in the `results\comparison-empirical-mvp` folder. In particular, the results in `Apache Data Sketches Java CPC.csv` confirm the statement in the introduction section of the paper that the memory footprint of the CPC implementation of [Apache DataSketches](https://github.com/apache/datasketches-java) is more than twice as large as the serialization size.
+
+## Libraries implementing UltraLogLog
+* Java: https://central.sonatype.com/artifact/com.dynatrace.hash4j/hash4j
+* Rust: https://crates.io/crates/ultraloglog
