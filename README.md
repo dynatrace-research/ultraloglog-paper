@@ -41,3 +41,4 @@ Since its invention HyperLogLog has become the standard algorithm for approximat
 ## Libraries implementing UltraLogLog
 * Java: https://central.sonatype.com/artifact/com.dynatrace.hash4j/hash4j
 * Rust: https://crates.io/crates/ultraloglog
+* Elixir: https://github.com/thatsme/ultra_log_log
